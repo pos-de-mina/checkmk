@@ -6,7 +6,7 @@
 #>
 
 # service header
-echo "<<<windows_scheduled_tasks>>>"
+echo "<<<windows_scheduled_tasks:sep(9)>>>"
 
 #
 # Test OS version according official article
@@ -19,17 +19,14 @@ if ($version -ge [float]6.0) {
 
     Get-ScheduledTask |
     Where-Object {
-        $_.TaskPath -notlike '\Microsoft\Windows\*' -and $_.State -notin ('Disabled') -and $_.TaskName -notlike '*S-1-5
--21*'
+        $_.TaskPath -notlike '\Microsoft\Windows\*' -and $_.State -notin ('Disabled') -and $_.TaskName -notlike '*S-1-5-21*'
     } |
     Get-ScheduledTaskInfo |
     select TaskPath, TaskName, LastTaskResult, LastRunTime, NextRunTime |
     sort TaskPath, TaskName |
     ForEach-Object {
-        #Write-Output ('{0}{1} {2} {3:s} {4:s}' -f $_.TaskPath, $_.TaskName.replace(' ', ''), $_.LastTaskResult, $_.Las
-tRunTime,$_.NextRunTime)
-        Write-Output "$($_.TaskPath)$($_.TaskName.replace(' ', '')) $($_.LastTaskResult) $($_.LastRunTime.toString('s')
-) $(if($_.NextRunTime){$_.NextRunTime.toString('s')}else{'-'})"
+        #Write-Output ('{0}{1}`t{2}`t{3:s}`t{4:s}' -f $_.TaskPath, $_.TaskName.replace(' ', ''), $_.LastTaskResult, $_.LastRunTime,$_.NextRunTime)
+        Write-Output "$($_.TaskPath)$($_.TaskName.replace(' ', '')) $($_.LastTaskResult) $($_.LastRunTime.toString('s')) $(if($_.NextRunTime){$_.NextRunTime.toString('s')}else{'-'})"
     }
 
 <# Windows Server 2003, Windows Server 2003 R2
