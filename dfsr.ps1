@@ -4,7 +4,7 @@
 Get-Module -ListAvailable DFSR -ErrorAction Stop | Import-Module
 
 #
-# verfiy if DFSR Role are installed
+# Verifiy if DFSR Role are installed
 #
 $x = Get-Service DFSR -ErrorAction Stop 
 $x = Get-Process -Name dfsrs -ErrorAction Stop
