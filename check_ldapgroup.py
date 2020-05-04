@@ -36,8 +36,8 @@ _params = {
 		'Attributes' : ['sAMAccountName','whenChanged','member']
 	},
 	'Age' : {
-		'Warn' : sys.argv[6],
-		'Crit' : sys.argv[7]
+		'Warn' : int(sys.argv[6]),
+		'Crit' : int(sys.argv[7])
 	}
 }
 
