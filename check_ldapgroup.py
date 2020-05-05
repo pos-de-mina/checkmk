@@ -94,6 +94,7 @@ new_members = []
 if (ldap_group['Members'] == None):
 	ldap_group = ldap_group_tmp.copy()
 elif (ldap_group['Change'] != ldap_group_tmp['Change']):
+	ldap_group['Change'] = ldap_group_tmp['Change']
 	for m in ldap_group_tmp['Members']:
 		if (m not in ldap_group['Members']):
 			new_members.append (m)
