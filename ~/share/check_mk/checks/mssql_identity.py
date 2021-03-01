@@ -29,10 +29,10 @@ def check_mssql_identity(item, params, info):
         warn, crit = params["levels"]
         perfdata = []
         if max_identity_value.isnumeric():
-            max_identity_value = int(max_identity_value)
+            max_identity_value = float(max_identity_value)
         else:
             max_identity_value = 2147483647
-        cur_identity_value = int(cur_identity_value)
+        cur_identity_value = float(cur_identity_value)
         identity_percentage = cur_identity_value / max_identity_value * 100.0
         
         perfdata.append(("Percentage", identity_percentage, warn, crit, 0, 100))
