@@ -1,18 +1,19 @@
 #!/bin/bash
-#
+
 # Agent to Monitoring Prometheus via PromQL
-#
+
 # S E T U P
 #   ln -s /omd/_custom/agents/jq-linux64 /bin/jq
+#   touch /omd/_custom/agents/agent_prometheus_v1.1.sh
 #   chmod +x /omd/_custom/agents/agent_prometheus_v1.1.sh
-#
+
 # R E F
 #   - https://github.com/stedolan/jq/releases
 #   - https://github.com/prometheus/nagios_plugins/blob/master/check_prometheus_metric.sh
 #   - https://stackoverflow.com/questions/48835035/average-memory-usage-query-prometheus
-#
-# Copyright (c) 2020-11 Antonio Pos-de-Mina
-#
+
+# https://github.com/pos-de-mina/
+
 
 ###############################################################################
 
@@ -24,6 +25,7 @@ export PROMETHEUS_PASSWORD=$3
 export CMK_HOST_IP=$4
 
 ###############################################################################
+
 
 function get_prometheus_ql() {
 
@@ -130,10 +132,11 @@ function check_prometheus_filesystem () {
 
 }
 
+
 ##############################################################################
 
 # prometheus status check
-#curl -skG -u $PROMETHEUS_USER:$PROMETHEUS_PASSWORD ${PROMETHEUS_SERVER}/api/v1/query?query=cafebabe | jq -r
+# curl -skG -u $PROMETHEUS_USER:$PROMETHEUS_PASSWORD ${PROMETHEUS_SERVER}/api/v1/query?query=cafebabe | jq -r
 
 export PROMETHEUS_HOST=$(curl -skG -u $PROMETHEUS_USER:$PROMETHEUS_PASSWORD ${PROMETHEUS_SERVER}/api/v1/targets | \
   jq -r '.data.activeTargets[] | select(.labels.job == "ssh") |  [.labels.hostname, .labels.instance] | join(" ")' | \
