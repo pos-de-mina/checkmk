@@ -6,27 +6,79 @@
 #   - https://github.com/Checkmk/checkmk/tree/master/agents/windows/plugins/mssql.vbs
 # 
 # References:
-#   - https://learn.microsoft.com/en-us/sql/t-sql/functions/serverproperty-transact-sql
-#   - https://learn.microsoft.com/pt-br/sql/t-sql/functions/isnull-transact-sql
+#   - https://learn.microsoft.com/en-us/sql/tools/sqlcmd/sqlcmd-utility
+# 
+# Parameters:
+#   - $1: MSSQL Server/IP address
+#   - $2: MSSQL Instance name
+#   - $3: MSSQL Instance port
+#   - $4: MSSQL User (database user only)
+#   - $5: MSSQL Password
+#   - $6: an array with session and cache age in minutes format (['session_1']=3600 ['session_n']=60)
 # 
 # -----------------------------------------------------------------------------
 
 
 # -----------------------------------------------------------------------------
 # Global variables
-# -----------------------------------------------------------------------------
 EPOCH_DATE=$(date +%s)
 
+# Parameters
 MSSQL_SERVER=$1
 MSSQL_INSTANCE=$2
 MSSQL_PORT=$3
 MSSQL_USR=$4
 MSSQL_PWD=$5
 declare -A MSSQL_SECTIONS=$6
+
+# Path to scripts
+MSSQL_AGENT_HOME=~/local/share/check_mk/agents/special/
+MSSQL_DB_INVENTORY=~/tmp/mssql.${MSSQL_SERVER}.${MSSQL_INSTANCE}.databases.inventory
 # -----------------------------------------------------------------------------
 
 
 # -----------------------------------------------------------------------------
+# References:
+#   - https://learn.microsoft.com/en-us/sql/tools/sqlcmd/sqlcmd-utility
+# Parameters:
+#   1: .sql file
+#   2: database name. default master!
+mssql_query() {
+    local MSSQL_FILE=$1
+    local MSSQL_DB=$2
+
+    sqlcmd \
+        -S "tcp:${MSSQL_SERVER}\\${MSSQL_INSTANCE},${MSSQL_PORT}" \
+        -U "${MSSQL_USR}" -P "${MSSQL_PWD}" \
+        -s '|' -w 512 -W -b -h-1 -E \
+        -d ${MSSQL_DB}
+        -i ${MSSQL_FILE}
+}
+
+# -----------------------------------------------------------------------------
+# Description:
+#   Get file age in minutes based on modified date
+# Parameters:
+#   $1: THe file to check
+# Returns:
+#   file age in minutes
+get_file_age_in_minutes() {
+  # file to check
+  local file_path="$1"
+  # Get the current timestamp in seconds since the epoch
+  local current_time=$(date +%s)
+  # Get the file's modification timestamp in seconds since the epoch
+  local file_mtime=$(stat -c %Y "${file_path}")
+  # Calculate the age of the file in minutes
+  local age_minutes=$(( (current_time - file_mtime) / 60 ))
+
+  echo "${age_minutes}"
+}
+
+# -----------------------------------------------------------------------------
+#  Main body
+
+# print header for checkmk agent format 
 printf '<<<check_mk>>>\nVersion: 1.0\nAgentOS: MSSQL Agentless\n'
 
 # verify connection to database
@@ -41,137 +93,66 @@ if [ $? -ne 0 ]; then
 fi
 
 # Create an inventory of databases
-readarray -t MSSQL_DATABASES < <(sqlcmd \
+sqlcmd \
     -S "tcp:${MSSQL_SERVER}\\${MSSQL_INSTANCE},${MSSQL_PORT}" \
     -U "${MSSQL_USR}" -P "${MSSQL_PWD}" \
     -s '|' -w 512 -W -b -h-1 -E \
-    -Q "set nocount on; select name from sys.databases")
+    -Q "set nocount on; select name from sys.databases;" \
+    -o ${MSSQL_DB_INVENTORY}
 
-# Print the elements of the array
-# for db in "${MSSQL_DATABASES[@]}"; do
-#   echo "$db"
-# done
-# -----------------------------------------------------------------------------
-
-
-# -----------------------------------------------------------------------------
-# Parameters:
-#   1: service name
-#   2: Cache Age in seconds
-checkmk_service() {
-# -----------------------------------------------------------------------------
-    printf "<<<${1}:sep(124):cached(${EPOCH_DATE},${2})>>>"
-}
-# -----------------------------------------------------------------------------
-
-
-# -----------------------------------------------------------------------------
-# Parameters:
-#   1: service name
-#   2: database name. for instance use msdb!
-#   - https://learn.microsoft.com/en-us/sql/tools/sqlcmd/sqlcmd-utility
-mssql_query() {
-# -----------------------------------------------------------------------------
-    local MSSQL_SECTION=$1
-    local MSSQL_DB=$2
-
-    # sqlcmd -S 'localhost,1433' -U sa -P 'yourStrong(!)Password' -d 'tempdb' -Q 'set nocount on;select getdate()'
-    # sqlcmd -S .\$instance -d $database -E -W -w 1024 -i $_ -s "|" -h-1 -o "C:\ProgramData\checkmk\agent\spool\$($_.BaseName).$($instance).$($database).log"
-
-    sqlcmd \
-        -S "tcp:${MSSQL_SERVER}\\${MSSQL_INSTANCE},${MSSQL_PORT}" \
-        -U "${MSSQL_USR}" -P "${MSSQL_PWD}" \
-        -s '|' -w 512 -W -b -h-1 -E \
-        -d ${MSSQL_DB}
-        -i mssql.${MSSQL_SECTION}.sql
-        -o ~/tmp/mssql.${MSSQL_SECTION}.${MSSQL_SERVER}.${MSSQL_INSTANCE}.cache
-}
-# -----------------------------------------------------------------------------
-
-
-# -----------------------------------------------------------------------------
-# Parameters:
-#   1: service name
-#   2: database name
-#   - https://learn.microsoft.com/en-us/sql/tools/sqlcmd/sqlcmd-utility
-# -----------------------------------------------------------------------------
-
-
-
-ls -1 ~/.../mssql.instance.*.sql | while read mssql_instance_file; do
-    checkmk_service 
-done
-
-ls -1 ~/.../mssql.database.*.sql | while read mssql_database_file; do
-    checkmk_service 
-done
-
-# -----------------------------------------------------------------------------
-
-
-
-# Path to scripts
-MSSQL_AGENT_HOME=~/local/share/check_mk/agents/special/
-
-
-##############################################################################
-
-#######################################
-# Query Oracle via SQL Plus
-# P A R A M S
-#   - $1: Section to run
-#   - $2: Section Age
-# O U T P U T
-#   - return the output from 
-#######################################
-mssql_query () {
-  MSSQL_SECTION=$1
-  MSSQL_SECTION_AGE=$2
-  MSSQL_FILE_AGE=0
-  MSSQL_FILE="/tmp/mssql_${MSSQL_HOST}_${MSSQL_SID}_${MSSQL_SECTION}.log"
-  MSSQL_FILE2="${MSSQL_FILE}.new"
-
-  # create files if doesn't exist
-  if [[ ! -f $MSSQL_FILE ]]; then
-    touch $MSSQL_FILE
-  fi
-  if [[ ! -f $MSSQL_FILE2 ]]; then
-    touch $MSSQL_FILE2
-  fi
-
-  # verify file age
-  MSSQL_FILE_AGE=$(expr $(date +%s) - $(stat -c %Y ${MSSQL_FILE2}))
-  MSSQL_FILE_AGE=$(( MSSQL_FILE_AGE / 60 ))
-  # verify if file are empty
-  if [[ $(wc -c $MSSQL_FILE2 | awk '{print $1}') -gt 1 ]]; then
-    cp $MSSQL_FILE2 $MSSQL_FILE
-  fi
-
-  echo "<<<mssql_${MSSQL_SECTION}:sep(124):cached($(date +%s),$(($MSSQL_SECTION_AGE * 60)))>>>"
-  cat ${MSSQL_FILE}
-
-  echo "$(date +%s) | $MSSQL_SECTION $MSSQL_SECTION_AGE $MSSQL_FILE $MSSQL_FILE_AGE" >> /tmp/mssql_agent.${USER}.log
-
-  # run sqlplus asynchronous
-  if [[ $MSSQL_FILE_AGE -gt $MSSQL_SECTION_AGE || $MSSQL_FILE_AGE -eq 0 ]]; then
-    echo "$(date +%s) | Run Assync $MSSQL_SECTION" >> ~/tmp/mssql_agent.${USER}.log
-    cat $MSSQL_AGENT_HOME/mssql_$MSSQL_SECTION.sql | sqlplus -S $MSSQL_USR/$MSSQL_PWD@$MSSQL_SID > $MSSQL_FILE2 2>>/tmp/mssql_agent.${USER}.error.log &
-  fi
-}
-
-##############################################################################
-
-#######################################
-# Check_MK Agent Protocol Header
-
-#######################################
-# Dump all Sections 
-# /omd/agent_oracle.sh 'apexa2ip-scan.besp.dsp.gbes' DAPP7 nagios N4gi1os2k19 (['version']=3600 ['processes']=60 ['logswitches']=60 ['locks']=60 ['performance']=60 ['dataguard_stats']=60 ['asm_diskgroup']=60 ['longactivesessions']=60 ['recovery_status']=60 ['sessions']=60 ['resumable']=60 ['rman']=60 ['tablespaces']=60 ['recovery_area']=60 ['undostat']=60 ['jobs']=60 ['ts_quotas']=60 ['instance']=60)
-
+# list all Sections 
 for section in "${!MSSQL_SECTIONS[@]}"; do
-  # verify if section can be called. Zero means this sections can't call.
-  if [ ${MSSQL_SECTIONS[$section]} -gt 0 ]; then
-    printf "<<<mssql_${section}:sep(124):cached(${EPOCH_DATE},${2})>>>"
-    mssql_query $section ${MSSQL_SECTIONS[$section]};
-  fi
+    # get section age in minutes
+    # ! section age if 0 means real time not assyncronous
+    section_age=${MSSQL_SECTIONS[$section]}
+    section_file_cache="~/tmp/mssql.${MSSQL_SERVER}.${MSSQL_INSTANCE}.${section}.cache"
+    section_file_cache_age=0
+    section_file_sql=$(ls -1 ~/tmp/mssql.*.${section}.sql)
+
+    # check if file not exists, create file
+    if [ ! -f "${section_file_cache}" ]; then
+        touch "${section_file_cache}"
+        # section_file_cache_age=0
+    else
+        # get file age
+        section_file_cache_age=$(get_file_age_in_minutes "${section_file_cache}")
+    fi
+
+    # compare file age with section age
+    if (( section_age > section_file_cache_age )) && (( section_age > 0 )); then
+        # dump assync collection of file
+        cat ${section_file_cache}
+    fi
+
+    # print section
+    printf "<<<mssql_${section}:sep(124):cached(${EPOCH_DATE},${section_age})>>>" > ${section_file_cache}
+
+    case "$section_file_sql" in
+        *".instance."*)
+            # Syncronous
+            if (( section_age = 0 )); then
+                mssql_query $section_file_sql 'master' >> ${section_file_cache}
+                cat ${section_file_cache}
+            # Assyncronous
+            else
+                mssql_query $section_file_sql 'master' >> ${section_file_cache} &
+            fi
+            ;;
+        *".database."*)
+            # Syncronous
+            if (( section_age = 0 )); then
+                # get information for all databases
+                cat ${MSSQL_DB_INVENTORY} | while read mssql_db; do
+                    mssql_query $section_file_sql $mssql_db >> ${section_file_cache};
+                done
+                cat ${section_file_cache}
+            # Assyncronous
+            else
+                # get information for all databases
+                cat ${MSSQL_DB_INVENTORY} | while read mssql_db; do
+                    mssql_query $section_file_sql $mssql_db >> ${section_file_cache} &;
+                done
+            fi
+            ;;
+    esac
 done
