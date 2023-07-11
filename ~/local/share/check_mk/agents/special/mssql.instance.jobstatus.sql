@@ -1,6 +1,7 @@
 set nocount on;
 :setvar SQLCMDHEADERS -1
 :setvar SQLCMDCOLSEP |
+-- declare @epoch bigint; set @epoch = DATEDIFF(SECOND, '1970-01-01 00:00:00', GETDATE());
 select '<<<mssql_jobstatus:sep(124)>>>';
 
 select
