@@ -1,4 +1,6 @@
--- https://learn.microsoft.com/en-us/sql/t-sql/functions/databasepropertyex-transact-sql
+-- https://learn.microsoft.com/en-us/sql/relational-databases/system-tables/backupset-transact-sql
+-- GitHub Project: /Checkmk/cmk/base/plugins/agent_based/mssql_backup.py
+
 set nocount on;
 SELECT '<<<mssql_backup:sep(124)>>>';
 
@@ -59,7 +61,7 @@ BEGIN
                 CONVERT(VARCHAR, DATEADD(s, DATEDIFF(s, '19700101', MAX(backup_finish_date)), '19700101'), 24) bs_time,
                 type bs_type,
                 database_name as bs_dbname
-            FROM msdb.dbo.backupset b JOIN @mssql_backup on b.database_name = @mssql_backup.db_name
+            FROM msdb.dbo.backupset b
                 LEFT OUTER JOIN sys.databases db ON b.database_name = db.name 
                 LEFT OUTER JOIN sys.dm_hadr_database_replica_states rep ON db.database_id = rep.database_id 
             WHERE (rep.is_local is null or rep.is_local = 1) 
