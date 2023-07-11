@@ -1,5 +1,4 @@
-use msdb;
-GO
+-- use msdb;
 set nocount on;
 
 SELECT
