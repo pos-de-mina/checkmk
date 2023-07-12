@@ -1,6 +1,10 @@
-﻿IF OBJECT_ID('msdb.dbo.dbm_monitor_data') IS NULL return;
-
+﻿-- 
+-- 
+-- 
 set nocount on;
+
+IF OBJECT_ID('msdb.dbo.dbm_monitor_data') IS NULL return;
+
 select '<<<mssql_databasemirrortime:sep(124)>>>';
 
 SELECT
