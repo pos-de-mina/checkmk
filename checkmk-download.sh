@@ -9,7 +9,7 @@
 #   - $1: checkmk user for download packages
 #   - $2: checkmk password
 # 
-# 
+# https://github.com/pos-de-mina/check_mk/blob/master/checkmk-download.sh
 
 CMK_USR=$1
 CMK_PWD=$2
