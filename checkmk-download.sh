@@ -16,7 +16,7 @@ CMK_PWD=$2
 
 # 
 curl --silent https://download.checkmk.com/stable_downloads.json | \
-  jq -r '.checkmk[].editions.cee[][0]' | 
+  jq -r '.checkmk[].editions.cee[][0]' | \
   grep -E 'deb|rpm|docker' > cmk.files
 
 rm -f cmk.url
